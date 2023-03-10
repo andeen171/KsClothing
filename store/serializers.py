@@ -17,11 +17,21 @@ class ProductSerializer(serializers.ModelSerializer):
 class SaleItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = SaleItem
-        fields = ['product', 'quantity', 'value']
+        fields = '__all__'
+
+
+class ReadWriteSerializerMethodField(serializers.SerializerMethodField):
+    def __init__(self, method_name=None, **kwargs):
+        self.method_name = method_name
+        kwargs['source'] = '*'
+        super(serializers.SerializerMethodField, self).__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        return {self.field_name: data}
 
 
 class SaleSerializer(serializers.ModelSerializer):
-    products = SaleItemSerializer(many=True)
+    products = ReadWriteSerializerMethodField() 
 
     class Meta:
         model = Sale
@@ -31,8 +41,16 @@ class SaleSerializer(serializers.ModelSerializer):
         sale_items_data = validated_data.pop('products')
         sale = Sale.objects.create(**validated_data)
         for sale_item in sale_items_data:
-            SaleItem.objects.create(sale=sale, **sale_item)
+            sale_item['sale'] = sale.id
+            serializer = SaleItemSerializer(data=sale_item)
+            if serializer.is_valid():
+                serializer.save()
         return sale
+
+    def get_products(self, instance):
+        qs = instance.items.all()
+        serializer = SaleItemSerializer(qs, many=True)
+        return serializer.data
 
 
 class StockSerializer(serializers.ModelSerializer):

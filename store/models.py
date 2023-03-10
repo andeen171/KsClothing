@@ -44,7 +44,7 @@ class Sale(models.Model):
 
 
 class SaleItem(models.Model):
-    sale = models.ForeignKey(Sale, on_delete=models.CASCADE)
+    sale = models.ForeignKey(Sale, related_name='items', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.IntegerField()
     value = models.DecimalField(max_digits=10, decimal_places=2)
