@@ -11,7 +11,7 @@ class Category(models.Model):
 
     class Meta:
         verbose_name_plural = "Categories"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
 
 class Product(models.Model):
@@ -19,7 +19,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     cost = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()
-    image = models.ImageField(upload_to='images/')
+    image = models.ImageField(upload_to="images/")
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -28,11 +28,11 @@ class Product(models.Model):
         return self.name
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
 
 class Sale(models.Model):
-    products = models.ManyToManyField(Product, related_name='sales', through='SaleItem')
+    products = models.ManyToManyField(Product, related_name="sales", through="SaleItem")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -40,11 +40,11 @@ class Sale(models.Model):
         return str(self.products)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
 
 class SaleItem(models.Model):
-    sale = models.ForeignKey(Sale, related_name='items', on_delete=models.CASCADE)
+    sale = models.ForeignKey(Sale, related_name="items", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.IntegerField()
     value = models.DecimalField(max_digits=10, decimal_places=2)
@@ -60,7 +60,7 @@ class Stock(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f'{self.size}: {self.quantity}'
+        return f"{self.size}: {self.quantity}"
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
