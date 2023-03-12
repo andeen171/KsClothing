@@ -1,6 +1,12 @@
-from rest_framework import viewsets
-from .models import Product, Sale, Category, Stock
-from .serializers import ProductSerializer, SaleSerializer, CategorySerializer, StockSerializer
+from rest_framework import viewsets, views
+from rest_framework.response import Response
+from .models import Product, Sale, Category
+from .serializers import (
+    ProductSerializer,
+    SaleSerializer,
+    CategorySerializer,
+    StockReceivalSerializer,
+)
 from .paginations import PageNumberPagination
 
 
@@ -21,6 +27,15 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
 
 
-class StockViewSet(viewsets.ModelViewSet):
-    queryset = Stock.objects.all()
-    serializer_class = StockSerializer
+class StockReceivalAPIView(views.APIView):
+    def post(self, request, product_id, size_slug):
+        obj = {
+            "product": product_id,
+            "stock": size_slug,
+            "quantity": request.data["quantity"],
+        }
+        serializer = StockReceivalSerializer(data=obj)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        product = Product.objects.get(id=product_id)
+        return Response(ProductSerializer(product).data)

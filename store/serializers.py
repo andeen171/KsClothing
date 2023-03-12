@@ -5,13 +5,13 @@ from .models import Product, Sale, Stock, Category, SaleItem
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ('id', 'name')
+        fields = ("id", "name")
 
 
 class StockSerializer(serializers.ModelSerializer):
     class Meta:
         model = Stock
-        fields = ('id', 'size', 'quantity') 
+        fields = ("id", "size", "quantity")
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -37,7 +37,25 @@ class SaleItemSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def create(self, validated_data):
-        validated_data.pop("size")
+        index = self.context.get("index", 0)
+        try:
+            stock = Stock.objects.filter(
+                product=validated_data["product"], size=validated_data.pop("size")
+            ).get()
+            if validated_data["quantity"] > stock.quantity:
+                raise serializers.ValidationError(
+                    {
+                        "products": {
+                            f"{index}.quantity": ["Quantity is more than stock."]
+                        }
+                    }
+                )
+            stock.quantity -= validated_data["quantity"]
+            stock.save()
+        except Stock.DoesNotExist:
+            raise serializers.ValidationError(
+                {"products": {f"{index}.size": ["This size is not available."]}}
+            )
         sale_item = SaleItem.objects.create(**validated_data)
         return sale_item
 
@@ -62,19 +80,34 @@ class SaleSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         sale_items_data = validated_data.pop("products")
         sale = Sale.objects.create(**validated_data)
-        for sale_item in sale_items_data:
+        for i, sale_item in enumerate(sale_items_data):
             sale_item["sale"] = sale.id
-            serializer = SaleItemSerializer(data=sale_item)
-            if serializer.is_valid():
-                serializer.save()
-                stock = Stock.objects.filter(
-                    product=sale_item["product"], size__icontains=sale_item["size"]
-                ).get()
-                stock.quantity -= sale_item["quantity"]
-                stock.save()
+            serializer = SaleItemSerializer(data=sale_item, context={"index": i})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
         return sale
 
     def get_products(self, instance):
         qs = instance.items.all()
         serializer = SaleItemSerializer(qs, many=True)
         return serializer.data
+
+
+class StockReceivalSerializer(serializers.Serializer):
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    stock = serializers.CharField(max_length=1)
+    quantity = serializers.IntegerField(min_value=1)
+
+    def validate_stock(self, value):
+        stock = Stock.objects.filter(product=self.initial_data["product"], size=value)
+        if not stock.exists():
+            raise serializers.ValidationError(
+                {"stock": ["This size is not available."]}
+            )
+        return stock.get()
+
+    def create(self, validated_data):
+        stock = validated_data["stock"]
+        stock.quantity += validated_data["quantity"]
+        stock.save()
+        return stock
